@@ -2,18 +2,10 @@
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 ![Lanes Image](./examples/example_output.jpg)
 
-In this project, your goal is to write a software pipeline to identify the lane boundaries in a video, but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
 
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
+## Project 2 (Self-Driving Car Engineer - Udacity)
 
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
-
-The Project
----
+**Advanced Lane Finding Project**
 
 The goals / steps of this project are the following:
 
@@ -26,14 +18,134 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-The images for camera calibration are stored in the folder called `camera_cal`.  The images in `test_images` are for testing your pipeline on single frames.  If you want to extract more test images from the videos, you can simply use an image writing method like `cv2.imwrite()`, i.e., you can read the video in frame by frame as usual, and for frames you want to save for later you can write to an image file.  
+[//]: # (Image References)
 
-To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `output_images`, and include a description in your writeup for the project of what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
+[image1]: ./camera_cal/calibration3.jpg "Distorted"
+[image2]: ./result_images/calibration3_dst.jpg "Undistorted"
+[image3]: ./test_images/test4.jpg "Distorted"
+[image4]: ./output_images/udst_test4.jpg "Undistorted"
+[image5]: ./output_images/lines_test4.jpg "Line detection"
+[image7]: ./result_images/straight_lines1.jpg "Undistorted"
+[image6]: ./result_images/straight_lines1_bev.jpg "Bird eye view"
 
-The `challenge_video.mp4` video is an extra (and optional) challenge for you if you want to test your pipeline under somewhat trickier conditions.  The `harder_challenge.mp4` video is another optional challenge and is brutal!
+[video1]: ./project_video.mp4 "Video"
 
-If you're feeling ambitious (again, totally optional though), don't stop there!  We encourage you to go out and take video of your own, calibrate your camera and show us how you would implement this project from scratch!
+## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
+
+### Camera Calibration
+
+#### 1. Obtaining the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+
+The code for this step is contained in the first code cell of the IPython notebook located in "./calibration_and_perspetive.ipynb".   
+
+Initally,  I create a list of images in the camera_cal folder, they corresponds to images taken to a 9x6 chessboard in different positions.  The parameters of the chessboard and it's coordinates are set in the world reference frame.  Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  
+
+Two vectors are created, one for the `object points` and another one for the `image points`. Each image in the folder is converted to gray scale and throught opencv function `findChessboardCorners` I obtain the corners of the chessboard in image frame.  If the corners are successfully extracted, I save the image coordinates and the object coordinates in the arrays. 
+
+The `object points` and  `image points` are used to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  This piece of code saves the intrinsic parameters into a file to be used in future.
+I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+
+![alt text][image1]
+![alt text][image2]
+
+### Pipeline (single images)
+
+#### 1. Distortion-corrected image.
+
+I read the camera parameters from the file generated by the camera calibration code. To demonstrate this step. I used  the opencv function `undistort` to undistort the images, it requires the original image and the camera intrinsic parameters. This code can be found in the line 210 of `pipe_line_test_images.pynb`.  Here an example:
+
+![alt text][image3]
+![alt text][image4]
+
+#### 2. Line extraction. 
+
+In this step, I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 8 through 47 in `pipe_line_test_images.ipynb`).  
+Since white color has a very high saturation value, I use this channel in our pipeline to detect the lines.  I dentify that the yellow color has a Hue between 20 and 30, for this reason this channel was also included. Finally I  check for gradients in x from the saturation channel (illumination robust)
+
+Here's an example of this step. 
+
+![alt text][image3]
+![alt text][image5]
+
+#### 3. Perspective transformation.
+
+The code for this step is contained in the second code cell of the IPython notebook located in "./calibration_and_perspetive.ipynb".   Here, we hardcoded the source and destionation points as: 
+
+| Source        | Destination   | 
+|:-------------:|:-------------:| 
+| 202, 719      | 315, 720      | 
+| 591, 452      | 315, 0        |
+| 696, 452      | 970, 0        |
+| 1123, 719     | 970, 720      |
+
+I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+
+![alt text][image6]
+![alt text][image7]
+
+The transformation matrices (from source to destination and viceversa) are saved in a file for future usage. I read this file in the pipeline in the line 199  in `pipe_line_test_images.ipynb`.
+
+In the pipeline, the code for my perspective transform includes an opencv function called `warpPerspective()`, which appears in  the line 210 in the file `pipe_line_test_images.ipynb`.  This function takes as inputs an image , and the transformation matrix to create the bird eye view of the road.
+
+
+#### 4. Lane-line pixels and fit their positions with a polynomial
+
+Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+
+![alt text][image5]
+
+#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+I did this in lines # through # in my code in `my_other_file.py`
+
+#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+
+I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+
+![alt text][image6]
+
+---
+
+### Pipeline (video)
+
+#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+
+Here's a [link to my video result](./project_video.mp4)
+
+---
+
+### Discussion
+
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+
+Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+
+### Reflection
+
+### 1. Describe your pipeline. As part of the description, explain how you modified the draw_lines() function.
+
+My pipeline consisted of 5 steps. First, I converted the images to grayscale, then I .... 
+
+In order to draw a single line on the left and right lanes, I modified the draw_lines() function by ...
+
+If you'd like to include images to show how the pipeline works, here is how to include an image: 
+
+![alt text][image1]
+
+
+### 2. Identify potential shortcomings with your current pipeline
+
+
+One potential shortcoming would be what would happen when ... 
+
+Another shortcoming could be ...
+
+
+### 3. Suggest possible improvements to your pipeline
+
+A possible improvement would be to ...
+
+Another potential improvement could be to ...
 
